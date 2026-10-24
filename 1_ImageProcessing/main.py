@@ -20,11 +20,19 @@ def convert_to_grayscale(img): #Через матричное умножение
                                                 
 def antique_filter(img):
     #Сначала сделаем изображение полутоновым
-    res = convert_to_grayscale(img)
+    res = cv2.pyrDown(img)
+    res = cv2.pyrUp(res) #Немного размываем изображение
+    res = cv2.add(res,30)
+    res = convert_to_grayscale(res)
     bgr_matrix = np.array([[0.20],[0.75],[1.07]])
     res = cv2.transform(res, bgr_matrix) #Возвращаем обратно в BGR и получаем эффект сепии
-    res = cv2.pyrDown(res)
-    res = cv2.pyrUp(res) #Немного размываем изображение
+    noise_matrix = np.random.randint(-30, 30,res.shape,dtype=np.int16)
+    res = cv2.add(res.astype(np.int16),noise_matrix)#В аргументах преобразуем исходную в signet int, чтобы избежать переполнения
+    res = np.clip(res,0,255).astype(np.uint8)
+    res[0:res.shape[0]+1,0:res.shape[1]//4]
+
+
+    
     
     return res
 #img1 = resize_img(img1,500,500)
