@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import random
 img1  = cv2.imread("cat.jpg")
 img2 = cv2.imread('cat2.png')
 
@@ -18,24 +19,80 @@ def convert_to_grayscale(img): #Через матричное умножение
     #(фактически серый цвет в BGR), то есть BGR схлопываем до числа [0,255] яркости пикселя
     return cv2.transform(img, grey_matrix) #Умножение каждого пикселя на матрицу преобразования - теперь каждый пиксель это число показатель яркости
                                                 
-def antique_filter(img):
-    #Сначала сделаем изображение полутоновым
-    res = cv2.pyrDown(img)
-    res = cv2.pyrUp(res) #Немного размываем изображение
-    res = cv2.add(res,30)
-    res = convert_to_grayscale(res)
-    bgr_matrix = np.array([[0.20],[0.75],[1.07]])
-    res = cv2.transform(res, bgr_matrix) #Возвращаем обратно в BGR и получаем эффект сепии
-    noise_matrix = np.random.randint(-30, 30,res.shape,dtype=np.int16)
-    res = cv2.add(res.astype(np.int16),noise_matrix)#В аргументах преобразуем исходную в signet int, чтобы избежать переполнения
-    res = np.clip(res,0,255).astype(np.uint8)
-    res[0:res.shape[0]+1,0:res.shape[1]//4]
+def calc_ksize(img):
+    h, w = img.shape[:2]
+    ksize = int(min(h, w)/2)
+    if ksize % 2 == 0:
+        ksize += 1 #ksize - нечетное число
+    return (ksize,ksize)
 
 
-    
-    
+def fade_color(img,extent = 1):
+    if (extent < 0):
+        print("Extent is lower than zero.")
+        return img
+    elif (extent == 0):
+        return img
+    factor = 0.8 * extent # Коэфф снижения контраста
+    lift = 30 * extent  #поднятие черного
+    M = np.array([#Используем афинное преобразование каждого пикселя B*factor + lift, G*factor + lift, R*factor + lift
+    [factor, 0, 0],
+    [0, factor, 0],
+    [0, 0, factor]
+], dtype=np.float32)
+    res = cv2.transform(img,M) #Теперь домножаем каждый пиксель на матрицу преобразования
+    res = cv2.add(res,lift)
     return res
-#img1 = resize_img(img1,500,500)
+
+def old_photography(img, extent = 0.8):
+    res = img
+    #Шум
+    noise_matrix = np.random.randint( int(-30*extent), int(30*extent),res.shape,dtype=np.int16)
+    res = cv2.add(res.astype(np.int16),noise_matrix) #В аргументах преобразуем исходную в signet int, чтобы избежать переполнения
+    res = np.clip(res,0,255).astype(np.uint8)
+    
+    #царапины
+    for i in range(0, int(extent*4)):
+        a = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
+        b = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
+        for i in range(0,6):
+            res = cv2.line(res,a,b, (155, 150, 75),random.randint(1, 2),cv2.LINE_AA)
+            a = b
+            b = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
+    return res
+
+def antique_filter(img):
+#Сначала сделаем изображение полутоновым
+     res = img
+     res = cv2.pyrDown(res)
+     res = cv2.pyrUp(res) #Немного размываем изображение
+     
+     #Шум + царапины
+     res = old_photography(res,1)
+     
+     res = fade_color(res,1)
+     
+     #Эффект сепии
+     res = convert_to_grayscale(res)
+     bgr_matrix = np.array([[0.20],[0.75],[1.07]])
+     res = cv2.transform(res, bgr_matrix) #Возвращаем обратно в BGR
+     
+     res= res.astype(np.float64) #float64 нужен из за дальнейшего сложения
+     
+     
+     vinyet_mask = cv2.circle(np.zeros(res.shape),(res.shape[1]//2,res.shape[0]//2),res.shape[0]//2,(255,255,255),-1) #Черный экран с белым кругом по центру (маска для виньетки)
+     vinyet_mask = cv2.GaussianBlur(vinyet_mask, calc_ksize(res),0) #Размываем круг чтобы сгладить его углы
+     vinyet_mask = np.clip(vinyet_mask,0.0,255.0)/255.0
+     res *= vinyet_mask
+     
+     res = res.astype(np.uint8)
+     return res
+
+
+
+# =============================================================================
+# img1 = resize_img(img1,500,500)
+# =============================================================================
 img2 = antique_filter(img2)
 img1 = convert_to_grayscale(img1)
 if img1 is None:
