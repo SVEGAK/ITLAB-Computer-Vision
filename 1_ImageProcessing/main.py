@@ -82,11 +82,34 @@ def antique_filter(img):
      
      vinyet_mask = cv2.circle(np.zeros(res.shape),(res.shape[1]//2,res.shape[0]//2),res.shape[0]//2,(255,255,255),-1) #Черный экран с белым кругом по центру (маска для виньетки)
      vinyet_mask = cv2.GaussianBlur(vinyet_mask, calc_ksize(res),0) #Размываем круг чтобы сгладить его углы
-     vinyet_mask = np.clip(vinyet_mask,0.0,255.0)/255.0
+     vinyet_mask = np.clip(vinyet_mask,0.0,255.0)/255.0# Приводим к значением от 0.0 до 1.0
      res *= vinyet_mask
      
      res = res.astype(np.uint8)
      return res
+ 
+    
+#Интересным образом ломает цвета на изображении
+# =============================================================================
+# def mask(img):
+#     res = img
+#     mask = np.full(res.shape,255,dtype=np.uint8)
+#     mask = cv2.circle(mask,(res.shape[1]//2,res.shape[0]//2),res.shape[0]//2,(1,1,1),1)#Белый экран с кругом "единичек"
+#     mask = cv2.GaussianBlur(mask, calc_ksize(res),0) #Размываем круг чтобы сгладить его углы
+#     res *= mask
+#     res = res.astype(np.uint8)
+#     return res
+# 
+# =============================================================================
+
+def mask(img):
+    res = img
+    mask = np.full(res.shape,255,dtype=np.uint8)
+    mask = cv2.circle(mask,(res.shape[1]//2,res.shape[0]//2),res.shape[0]//2,(1,1,1),-1)#Белый экран с кругом "единичек"
+    mask = cv2.GaussianBlur(mask, calc_ksize(res),0) #Размываем круг чтобы сгладить его углы
+    res *= mask
+    res = res.astype(np.uint8)
+    return res
 
 
 
@@ -94,7 +117,10 @@ def antique_filter(img):
 # img1 = resize_img(img1,500,500)
 # =============================================================================
 img2 = antique_filter(img2)
-img1 = convert_to_grayscale(img1)
+# =============================================================================
+# img1 = convert_to_grayscale(img1)
+# =============================================================================
+img1 = mask(img1)
 if img1 is None:
     print("Ничего не получилось")
 else:
