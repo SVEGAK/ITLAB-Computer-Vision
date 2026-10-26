@@ -44,22 +44,31 @@ def fade_color(img,extent = 1):
     res = cv2.add(res,lift)
     return res
 
+#TODO переделать через масску и сложение, добавить гаусовское размытие на изображение маску спрямыми
 def old_photography(img, extent = 0.8):
-    res = img
+    res = fade_color(img.astype(np.float64),0.805)
     #Шум
     noise_matrix = np.random.randint( int(-30*extent), int(30*extent),res.shape,dtype=np.int16)
     res = cv2.add(res.astype(np.int16),noise_matrix) #В аргументах преобразуем исходную в signet int, чтобы избежать переполнения
-    res = np.clip(res,0,255).astype(np.uint8)
+    res = np.clip(res,0,255).astype(np.float64)
     
-    #царапины
+    #царапины и пятна
+    sharp_mask = np.zeros(res.shape,dtype=np.float64)
     for i in range(0, int(extent*4)):
         a = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
         b = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
-        for i in range(0,6):
-            res = cv2.line(res,a,b, (155, 150, 75),random.randint(1, 2),cv2.LINE_AA)
+        for i in range(0,2):
+            sharp_mask = cv2.line(sharp_mask,a,b, (255, 255, 255),2)
             a = b
-            b = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
-    return res
+            b = (random.randint(0,res.shape[1]//2),random.randint(0,res.shape[0]//2))
+    for i in range(0,int(3*extent)):
+        sharp_mask = cv2.circle(sharp_mask,(random.randint(0,res.shape[1]),random.randint(0,res.shape[0])),random.randint(0,res.shape[0]//4),(1,12,17),-1)
+        
+    sharp_mask = cv2.GaussianBlur(sharp_mask,(39,39),9,3)
+    res = np.clip(cv2.add(res,sharp_mask),0.0,255.0)
+    
+    
+    return res.astype(np.uint8)
 
 def antique_filter(img):
 #Сначала сделаем изображение полутоновым
@@ -89,14 +98,11 @@ def antique_filter(img):
      res = res.astype(np.uint8)
      return res
  
-    
-#TODO: сделать динамический рассчет сторон эллипса
+
+        
 def mask(img):
     res = img
     mask = np.full(res.shape,255,dtype=np.uint8)
-# =============================================================================
-#     mask = cv2.circle(mask,(res.shape[1]//2,res.shape[0]//2),res.shape[0]//3,(0,0,0),-1)#Белый экран с кругом "единичек"
-# =============================================================================
     mask = cv2.ellipse(mask,(res.shape[1]//2,res.shape[0]//2),(res.shape[1]//2,res.shape[0]//2),0,0,360,(0,0,0),-1)
     mask = cv2.GaussianBlur(mask, (109,109),0) #Размываем круг чтобы сгладить его углы
     res = cv2.add(res,mask)
@@ -107,14 +113,15 @@ def mask(img):
 
 
 
-img1_res = fade_color(img1)
 img2_res = mask(img2)
+img1_res = old_photography(img1)
 if img1 is None:
     print("Ничего не получилось")
 else:
-    cv2.imshow('Image',img1)
-    cv2.imshow('Image2',img1_res)
-    cv2.imshow('Image3',img2_res)
-    print(img2_res)
+# =============================================================================
+#     cv2.imshow('Image3',img2_res)
+# =============================================================================
+    cv2.imshow('Image1',img1_res)
+    cv2.imshow('Image123',img1)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
