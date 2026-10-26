@@ -34,7 +34,7 @@ def fade_color(img,extent = 1):
     elif (extent == 0):
         return img
     factor = 0.8 * extent # Коэфф снижения контраста
-    lift = 30 * extent  #поднятие черного
+    lift = 80 * extent  #поднятие черного
     M = np.array([#Используем афинное преобразование каждого пикселя B*factor + lift, G*factor + lift, R*factor + lift
     [factor, 0, 0],
     [0, factor, 0],
@@ -70,6 +70,7 @@ def antique_filter(img):
      #Шум + царапины
      res = old_photography(res,1)
      
+     #Выцветание
      res = fade_color(res,1)
      
      #Эффект сепии
@@ -89,42 +90,31 @@ def antique_filter(img):
      return res
  
     
-#Интересным образом ломает цвета на изображении
-# =============================================================================
-# def mask(img):
-#     res = img
-#     mask = np.full(res.shape,255,dtype=np.uint8)
-#     mask = cv2.circle(mask,(res.shape[1]//2,res.shape[0]//2),res.shape[0]//2,(1,1,1),1)#Белый экран с кругом "единичек"
-#     mask = cv2.GaussianBlur(mask, calc_ksize(res),0) #Размываем круг чтобы сгладить его углы
-#     res *= mask
-#     res = res.astype(np.uint8)
-#     return res
-# 
-# =============================================================================
-
+#TODO: сделать динамический рассчет сторон эллипса
 def mask(img):
     res = img
     mask = np.full(res.shape,255,dtype=np.uint8)
-    mask = cv2.circle(mask,(res.shape[1]//2,res.shape[0]//2),res.shape[0]//2,(1,1,1),-1)#Белый экран с кругом "единичек"
-    mask = cv2.GaussianBlur(mask, calc_ksize(res),0) #Размываем круг чтобы сгладить его углы
-    res *= mask
+# =============================================================================
+#     mask = cv2.circle(mask,(res.shape[1]//2,res.shape[0]//2),res.shape[0]//3,(0,0,0),-1)#Белый экран с кругом "единичек"
+# =============================================================================
+    mask = cv2.ellipse(mask,(res.shape[1]//2,res.shape[0]//2),(res.shape[1]//2,res.shape[0]//2),0,0,360,(0,0,0),-1)
+    mask = cv2.GaussianBlur(mask, (109,109),0) #Размываем круг чтобы сгладить его углы
+    res = cv2.add(res,mask)
+    res = np.clip(res,0.0,255.0)
     res = res.astype(np.uint8)
     return res
 
 
 
-# =============================================================================
-# img1 = resize_img(img1,500,500)
-# =============================================================================
-img2 = antique_filter(img2)
-# =============================================================================
-# img1 = convert_to_grayscale(img1)
-# =============================================================================
-img1 = mask(img1)
+
+img1_res = fade_color(img1)
+img2_res = mask(img2)
 if img1 is None:
     print("Ничего не получилось")
 else:
     cv2.imshow('Image',img1)
-    cv2.imshow('Image2',img2)
+    cv2.imshow('Image2',img1_res)
+    cv2.imshow('Image3',img2_res)
+    print(img2_res)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
