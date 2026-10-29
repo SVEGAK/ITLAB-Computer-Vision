@@ -133,11 +133,17 @@ def mask(img):
     res = res.astype(np.uint8)
     return res
 
+def negative_film(img):
+    #Негативный фильтр - инвертирование цветов, т.е. цвет = 255 - старый_цвет
+    res = img
+    mask = np.full(res.shape,255,dtype=np.uint8)
+    res = cv2.subtract(mask, res)
+    return res.astype(np.uint8)
 
 
 
 img2_res = old_photography(img2)
-img1_res = old_photography(img1)
+img1_res = negative_film(img1)
 if img1 is None:
     print("Ничего не получилось")
 else:
