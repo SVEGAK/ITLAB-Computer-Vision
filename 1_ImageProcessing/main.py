@@ -44,9 +44,31 @@ def fade_color(img,extent = 1):
     res = cv2.add(res,lift)
     return res
 
-#TODO переделать через масску и сложение, добавить гаусовское размытие на изображение маску спрямыми
+def calc_rand_lines(x, y, img):
+    if (x - (img.shape[1]//4) <= 0):
+        x_left = 0
+    else:
+        x_left = x - img.shape[1]//4
+        
+    if (y - (img.shape[1]//4) <= 0):
+        y_left = 0
+    else:
+        y_left = y - img.shape[0]//4 
+    
+    if (x + (img.shape[1]//4) > img.shape[1]):
+        x_right = img.shape[1] 
+    else:
+        x_right = x + img.shape[1]//4 
+        
+    if (y + (img.shape[1]//4) > img.shape[0]):
+        y_right = img.shape[0]
+    else:
+        y_right = y + img.shape[0]//4 
+    return (random.randint(x_left,x_right+1),random.randint(y_left,y_right+1))
+    
 def old_photography(img, extent = 0.8):
     res = fade_color(img.astype(np.float64),0.805)
+    
     #Шум
     noise_matrix = np.random.randint( int(-30*extent), int(30*extent),res.shape,dtype=np.int16)
     res = cv2.add(res.astype(np.int16),noise_matrix) #В аргументах преобразуем исходную в signet int, чтобы избежать переполнения
@@ -55,18 +77,21 @@ def old_photography(img, extent = 0.8):
     #царапины и пятна
     sharp_mask = np.zeros(res.shape,dtype=np.float64)
     for i in range(0, int(extent*4)):
-        a = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
-        b = (random.randint(0,res.shape[1]),random.randint(0,res.shape[0]))
-        for i in range(0,2):
-            sharp_mask = cv2.line(sharp_mask,a,b, (255, 255, 255),2)
-            a = b
-            b = (random.randint(0,res.shape[1]//2),random.randint(0,res.shape[0]//2))
+        x = res.shape[1]
+        y = res.shape[0]
+        a = (random.randint(0,x),random.randint(0,y))
+        b = (calc_rand_lines(a[0], a[1], img))
+        c = calc_rand_lines(b[0], b[1], img)
+        
+        pts = np.array([a, b, c], dtype=np.int32).reshape((-1, 1, 2))
+        
+        sharp_mask = cv2.polylines(sharp_mask, [pts], False, (255, 255, 255), 1)
+
     for i in range(0,int(3*extent)):
         sharp_mask = cv2.circle(sharp_mask,(random.randint(0,res.shape[1]),random.randint(0,res.shape[0])),random.randint(0,res.shape[0]//4),(1,12,17),-1)
         
-    sharp_mask = cv2.GaussianBlur(sharp_mask,(39,39),9,3)
+    sharp_mask = cv2.GaussianBlur(sharp_mask,(31,31),3.2,3.2)
     res = np.clip(cv2.add(res,sharp_mask),0.0,255.0)
-    
     
     return res.astype(np.uint8)
 
@@ -79,8 +104,6 @@ def antique_filter(img):
      #Шум + царапины
      res = old_photography(res,1)
      
-     #Выцветание
-     res = fade_color(res,1)
      
      #Эффект сепии
      res = convert_to_grayscale(res)
@@ -113,14 +136,12 @@ def mask(img):
 
 
 
-img2_res = mask(img2)
+img2_res = old_photography(img2)
 img1_res = old_photography(img1)
 if img1 is None:
     print("Ничего не получилось")
 else:
-# =============================================================================
-#     cv2.imshow('Image3',img2_res)
-# =============================================================================
+    cv2.imshow('Image3',img2_res)
     cv2.imshow('Image1',img1_res)
     cv2.imshow('Image123',img1)
     cv2.waitKey(0)
