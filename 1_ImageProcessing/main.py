@@ -140,9 +140,28 @@ def negative_film(img):
     res = cv2.subtract(mask, res)
     return res.astype(np.uint8)
 
+def neon_effect(img,B,G,R):
+    neon = img
+    neon = cv2.GaussianBlur(neon, (9,9),0)#Убираем шум, тк это помешает работать оператору лапласа
+    neon = convert_to_grayscale(neon)#Чтобы потом удобнее задать неоновый цвет
+    
+    neon = cv2.Laplacian(neon,cv2.CV_64F,dst=None,ksize=5)#Выделение контуров объектов оператором лапласа
+    neon = cv2.convertScaleAbs(neon) #Берем модуль, чтобы не терять отрицательные значения 
+    
+    neon = (cv2.threshold(neon, 70, 255, cv2.THRESH_BINARY))[1]#Пороговая обработка, чтобы оставить самые яркие участки(контуры)
+    
+    bgr_matrix = np.array([[B],[G],[R]])#Матрица цвета
+    neon = cv2.transform(neon, bgr_matrix) #Возвращаем обратно в BGR
+    
+    neon_blurred = cv2.GaussianBlur(neon, (51,51), 20) #Размываем копию чтобы получить свечение
+    neon = cv2.add(neon,neon_blurred) #складываем и получаем свечение на изначальную маску
+    img_dark = (img*0.6).astype(np.uint8)#Затемняем изображение, чтобы на ярких картинках не было переполнения
+    res = cv2.add(img_dark,neon)#Накладываем неоновый эффект
+    return res
+    
 
 
-img2_res = old_photography(img2)
+img2_res = neon_effect(img1,1,0.10,0.4)
 img1_res = negative_film(img1)
 if img1 is None:
     print("Ничего не получилось")
