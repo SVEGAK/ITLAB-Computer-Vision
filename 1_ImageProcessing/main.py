@@ -6,7 +6,7 @@ import os
 # =============================================================================
 # !python main.py --help
 # !python main.py -i cat.jpg -f resize -w 800 --height 600
-# !python main.py -i cat.jpg -f neon --B 0.9 --G 0.2 --R 0.6 
+# !python main.py -i cat.jpg -f neon --B 0.9 --G 0.2 --R 0.6 -e 1 -g 1
 # !python main.py -i cat.jpg -f grayscale
 # !python main.py -i cat.jpg -f oldPhoto -e 0.5
 # !python main.py -i cat.jpg -f fadeColor -e 0.8
@@ -34,7 +34,8 @@ def main():
     parser.add_argument("-o", "--output", default="result.jpg", help="Путь для сохранения результата (по умолчанию: result.jpg)")
     
     # Специфичные аргументы для фильтров
-    parser.add_argument("-e", "--extent", type=float, default=0.8, help="Параметр extent для фильтров oldPhoto и fadeColor (по умолчанию: 0.8)")
+    parser.add_argument("-g", "--glow", type=float, default=1, help="Параметр glow(свечение) для фильтра neon (по умолчанию: 1, границы [0,10])")
+    parser.add_argument("-e", "--extent", type=float, default=0.8, help="Параметр extent(интенсивность) для фильтров neon, oldPhoto и fadeColor (по умолчанию: 0.8)")
     parser.add_argument("-w", "--width", type=int, default=500, help="Ширина для фильтра resize (по умолчанию: 500)")
     parser.add_argument("--height", type=int, default=500, help="Высота для фильтра resize (по умолчанию: 500)")
     
@@ -82,7 +83,7 @@ def main():
         res = negative_film(img)
         
     elif args.filter == "neon":
-        res = neon_effect(img, args.B, args.G, args.R)
+        res = neon_effect(img, args.B, args.G, args.R, extent= args.extent, glow = args.glow)
         
     else:
         print("Неизвестный фильтр.")
