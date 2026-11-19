@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import random
+import math
 
 def resize_img(img,new_w,new_h):
     k_x = new_w/img.shape[1] #Ширина
@@ -83,12 +84,11 @@ def old_photography(img, extent = 0.8):
         
         pts = np.array([a, b, c], dtype=np.int32).reshape((-1, 1, 2))
         
-        sharp_mask = cv2.polylines(sharp_mask, [pts], False, (255, 255, 255), 1)
+        sharp_mask = cv2.polylines(sharp_mask, [pts], False, (128, 128, 128), 1)
 
     for i in range(0,int(3*extent)):
-        sharp_mask = cv2.circle(sharp_mask,(random.randint(0,res.shape[1]),random.randint(0,res.shape[0])),random.randint(0,res.shape[0]//4),(1,12,17),-1)
+        sharp_mask = cv2.circle(sharp_mask,(random.randint(0,res.shape[1]),random.randint(0,res.shape[0])),random.randint(0,res.shape[0]//4),(1,9,14),-1)
         
-    sharp_mask = cv2.GaussianBlur(sharp_mask,(31,31),3.2,3.2)
     res = np.clip(cv2.add(res,sharp_mask),0.0,255.0)
     
     return res.astype(np.uint8)
@@ -131,6 +131,8 @@ def mask(img):
     res = res.astype(np.uint8)
     return res
 
+
+
 def negative_film(img):
     #Негативный фильтр - инвертирование цветов, т.е. цвет = 255 - старый_цвет
     res = img
@@ -138,21 +140,49 @@ def negative_film(img):
     res = cv2.subtract(mask, res)
     return res.astype(np.uint8)
 
-def neon_effect(img,B,G,R):
-    neon = img
-    neon = cv2.GaussianBlur(neon, (9,9),0)#Убираем шум, тк это помешает работать оператору лапласа
-    neon = convert_to_grayscale(neon)#Чтобы потом удобнее задать неоновый цвет
+def calc_gauss_kernel(extent,base):
+    result = math.floor(base*extent)
+    if (result < 3): return (3,3)
+    if(result%2 == 0):
+        result +=1
+    return (result,result)
+
+def neon_effect(img,B,G,R, extent,glow): # IMG B G R extent(float/int) extent - фактически четкость границ неона - чем меньше тем больше границ выделяются неоном
+    if not 0 <= extent <= 1:
+        raise ValueError("extent must be in [0, 1]")
+    if not 0 <= glow <= 10:
+        raise ValueError("extent must be in [0, 10]")
+    if extent == 0:
+        return img.copy()
     
-    neon = cv2.Laplacian(neon,cv2.CV_64F,dst=None,ksize=5)#Выделение контуров объектов оператором лапласа
-    neon = cv2.convertScaleAbs(neon) #Берем модуль, чтобы не терять отрицательные значения 
+    neon = img.astype(np.float64)
+    gaussed = cv2.GaussianBlur(neon, calc_gauss_kernel(extent,9), 8.5)
+    gray = convert_to_grayscale(gaussed)#Чтобы потом удобнее задать неоновый цвет
     
-    neon = (cv2.threshold(neon, 70, 255, cv2.THRESH_BINARY))[1]#Пороговая обработка, чтобы оставить самые яркие участки(контуры)
+    sharrx = cv2.Scharr(gray,cv2.CV_64F,1,0)
+    sharry = cv2.Scharr(gray,cv2.CV_64F,0,1)
     
+    sharr = np.sqrt((sharrx*sharrx+sharry*sharry))
+    
+    sharr = cv2.threshold(np.clip(sharr,0.0,255.0), 220*extent, 255, cv2.THRESH_TOZERO)[1]
+    if (extent < 0.75):
+        laplacian = cv2.Laplacian(cv2.GaussianBlur(gray, calc_gauss_kernel(extent,15),0),cv2.CV_64F,dst=None,ksize=7)
+        laplacian = np.clip(cv2.convertScaleAbs(laplacian*pow(6,extent)),0.0,255.0)
+        laplacian = (cv2.threshold(laplacian, 50*extent, 255, cv2.THRESH_BINARY))[1]#Пороговая обработка, чтобы оставить самые яркие участки(контуры)
+        neon_mask = np.clip(np.sqrt(sharr*laplacian),0.0,255.0).astype(np.uint8)
+        
+    else: neon_mask = np.clip(sharr,0.0,255.0).astype(np.uint8)
     bgr_matrix = np.array([[B],[G],[R]])#Матрица цвета
-    neon = cv2.transform(neon, bgr_matrix) #Возвращаем обратно в BGR
+    bgr_neon_mask = cv2.transform(neon_mask, bgr_matrix) #Возвращаем обратно в BGR
     
-    neon_blurred = cv2.GaussianBlur(neon, (51,51), 20) #Размываем копию чтобы получить свечение
-    neon = cv2.add(neon,neon_blurred) #складываем и получаем свечение на изначальную маску
+    glow_radius = glow / 10.0
+    sigma = 1.0 + 8.0 * glow_radius
+    radius = max(1, round(3 * sigma))
+    ksize = 2 * radius + 1
+
+    neon_blurred = cv2.GaussianBlur(bgr_neon_mask, (ksize,ksize),sigma) #Размываем копию чтобы получить свечение
+
+    neon = cv2.add(bgr_neon_mask,neon_blurred) #складываем и получаем свечение на изначальную маску
     img_dark = (img*0.6).astype(np.uint8)#Затемняем изображение, чтобы на ярких картинках не было переполнения
     res = cv2.add(img_dark,neon)#Накладываем неоновый эффект
     return res
