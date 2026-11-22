@@ -8,10 +8,10 @@ import os
 # !python main.py -i cat.jpg -f resize -w 800 --height 600
 # !python main.py -i cat.jpg -f neon --B 0.9 --G 0.2 --R 0.6 -e 1 -g 1
 # !python main.py -i cat.jpg -f grayscale
-# !python main.py -i cat.jpg -f oldPhoto -e 0.5
+# !python main.py -i cat.jpg -f oldPhoto -e 0.5 -c 4 -s 0.9
 # !python main.py -i cat.jpg -f fadeColor -e 0.8
 # !python main.py -i cat.jpg -f antique
-# !python main.py -i cat.jpg -f mask
+# !python main.py -i cat.jpg -f mask -H 0.6 -V 0.4
 # !python main.py -i cat.jpg -f negativeFilm
 # =============================================================================
 from filters import (
@@ -38,12 +38,15 @@ def main():
     parser.add_argument("-e", "--extent", type=float, default=0.8, help="Параметр extent(интенсивность) для фильтров neon, oldPhoto и fadeColor (по умолчанию: 0.8)")
     parser.add_argument("-w", "--width", type=int, default=500, help="Ширина для фильтра resize (по умолчанию: 500)")
     parser.add_argument("--height", type=int, default=500, help="Высота для фильтра resize (по умолчанию: 500)")
-    
-    # Коэффициенты для неона (по умолчанию берем те, что ты использовал ранее)
+    parser.add_argument("-c", "--circles", type=int, default=3, help="Количество пятен на изображении")
+    parser.add_argument("-s", "--sharpes", type=int, default=8, help="Интенсивность царапин на изображении")
+
     parser.add_argument("--B", type=float, default=1.0, help="Синий коэффициент для неона (по умолчанию: 1.0)")
     parser.add_argument("--G", type=float, default=0.1, help="Зеленый коэффициент для неона (по умолчанию: 0.1)")
     parser.add_argument("--R", type=float, default=0.4, help="Красный коэффициент для неона (по умолчанию: 0.4)")
-
+    parser.add_argument("-v", "--vinyet", type=float, default=0.5, help="Масштаб виньетки для antique")
+    parser.add_argument("-H", "--horizontal", type=float, default=0.5, help="Горизонтальный размер эллипса маски")
+    parser.add_argument("-V", "--vertical", type=float, default=0.5, help="Вертикальный размер эллипса маски")
     # 2. Парсим аргументы
     args = parser.parse_args()
 
@@ -68,16 +71,16 @@ def main():
         res = convert_to_grayscale(img)
         
     elif args.filter == "oldPhoto":
-        res = old_photography(img, extent=args.extent)
+        res = old_photography(img, extent=args.extent,circles_count = args.circles,sharpes_count=args.sharpes)
         
     elif args.filter == "fadeColor":
         res = fade_color(img, extent=args.extent)
         
     elif args.filter == "antique":
-        res = antique_filter(img)
+        res = antique_filter(img, extent=args.extent, circles_count=args.circles, sharpes_count=args.sharpes, vinyet_scale=args.vinyet)
         
     elif args.filter == "mask":
-        res = mask(img)
+        res = mask(img, horizontal=args.horizontal, vertical=args.vertical)
         
     elif args.filter == "negativeFilm":
         res = negative_film(img)
